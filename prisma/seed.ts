@@ -174,6 +174,7 @@ async function main() {
   await prisma.deckCard.deleteMany();
   await prisma.physicalCardCopy.deleteMany();
   await prisma.inventoryItem.deleteMany();
+  await prisma.buyListItem.deleteMany();
   await prisma.deck.deleteMany();
   await prisma.cardCatalogItem.deleteMany();
   await prisma.location.deleteMany();
@@ -408,6 +409,47 @@ async function main() {
     data: { deckCardId: nestBallSlot.id, physicalCopyId: nestBallCopies[0].id },
   });
 
+  await prisma.buyListItem.createMany({
+    data: [
+      {
+        catalogCardId: 'sv3-125',
+        cardName: 'Charizard ex',
+        supertype: 'Pokemon',
+        playableCardKey: charizardKey,
+        desiredQuantity: 2,
+        acquiredQuantity: 0,
+        priority: 'high',
+        status: 'pending',
+        sourceDeckId: activeDeck.id,
+        notes: 'Need more copies for the active deck',
+      },
+      {
+        catalogCardId: 'sv2-185',
+        cardName: 'Iono',
+        supertype: 'Trainer',
+        playableCardKey: ionoKey,
+        desiredQuantity: 2,
+        acquiredQuantity: 0,
+        priority: 'normal',
+        status: 'pending',
+        sourceDeckId: null,
+        notes: 'Manual entry from search',
+      },
+      {
+        catalogCardId: 'sv1-191',
+        cardName: 'Rare Candy',
+        supertype: 'Trainer',
+        playableCardKey: playableKey('Rare Candy', 'Trainer'),
+        desiredQuantity: 4,
+        acquiredQuantity: 4,
+        priority: 'normal',
+        status: 'purchased',
+        sourceDeckId: null,
+        notes: 'Already bought at locals',
+      },
+    ],
+  });
+
   const referenceDeck = await prisma.deck.create({
     data: {
       name: 'Meta Reference — Charizard',
@@ -476,6 +518,7 @@ async function main() {
   console.log(`  Catalog cards: ${CATALOG_CARDS.length}`);
   console.log(`  Active deck: ${activeDeck.name} (incomplete)`);
   console.log(`  Reference deck: ${referenceDeck.name} (60 cards)`);
+  console.log(`  Buy list items: 3`);
 }
 
 main()

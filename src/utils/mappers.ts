@@ -1,5 +1,6 @@
 import {
   CardCatalogItem,
+  BuyListItem,
   Deck,
   DeckCard,
   DeckCardAssignment,
@@ -123,5 +124,23 @@ export function mapMovement(movement: Movement) {
     from: movement.from,
     to: movement.to,
     note: movement.note,
+  };
+}
+
+export function mapBuyListItem(item: BuyListItem) {
+  return {
+    id: item.id,
+    catalogCardId: item.catalogCardId,
+    cardName: item.cardName,
+    supertype: supertypeToDisplay(item.supertype),
+    playableCardKey: item.playableCardKey,
+    desiredQuantity: item.desiredQuantity,
+    acquiredQuantity: item.acquiredQuantity,
+    priority: item.priority,
+    status: item.status,
+    sourceDeckId: item.sourceDeckId,
+    notes: item.notes,
+    addedAt: item.addedAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
   };
 }

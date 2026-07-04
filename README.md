@@ -133,6 +133,20 @@ CORS is enabled for all origins.
 |--------|------|-------------|
 | GET | `/api/v1/movements` | Audit log (`inventoryItemId`, `physicalCopyId`, `deckId` filters) |
 
+### Buy List
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/buylist` | List buy list items (`status`, `sourceDeckId`, `priority` filters) |
+| POST | `/api/v1/buylist` | Add item manually (deduplicates pending by `playableCardKey` + `sourceDeckId`) |
+| PATCH | `/api/v1/buylist/:id` | Update quantity, priority, status, notes |
+| POST | `/api/v1/buylist/:id/status` | Shortcut to change status only |
+| DELETE | `/api/v1/buylist/:id` | Remove item |
+| POST | `/api/v1/buylist/clear-purchased` | Delete all purchased items |
+| POST | `/api/v1/decks/:deckId/buylist/add-missing` | Add missing copies from active deck |
+
+When a deck is deleted, linked buy list items keep their record but `sourceDeckId` is set to `null`.
+
 ## Error format
 
 ```json

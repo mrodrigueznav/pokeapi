@@ -3,7 +3,7 @@
  * Example: playableKey("Charizard ex", "Pokémon") → "Pokémon::charizard ex"
  */
 export function playableKey(name: string, supertype: string): string {
-  return `${supertype}::${name.toLowerCase()}`;
+  return `${supertype}::${name.trim().toLowerCase()}`;
 }
 
 /**

@@ -102,6 +102,38 @@ export const returnCopySchema = z.object({
   locationId: z.string().uuid(),
 });
 
+export const buyListQuerySchema = z.object({
+  status: z.enum(['pending', 'purchased', 'cancelled']).optional(),
+  sourceDeckId: z.string().uuid().optional(),
+  priority: z.enum(['low', 'normal', 'high']).optional(),
+});
+
+export const addBuyListSchema = z.object({
+  catalogCardId: z.string().min(1),
+  cardName: z.string().min(1),
+  supertype: z.enum(['Pokémon', 'Trainer', 'Energy']),
+  quantity: z.number().int().positive(),
+  priority: z.enum(['low', 'normal', 'high']).optional(),
+  sourceDeckId: z.string().uuid().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export const updateBuyListSchema = z
+  .object({
+    desiredQuantity: z.number().int().positive().optional(),
+    acquiredQuantity: z.number().int().min(0).optional(),
+    priority: z.enum(['low', 'normal', 'high']).optional(),
+    status: z.enum(['pending', 'purchased', 'cancelled']).optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });
+
+export const updateBuyListStatusSchema = z.object({
+  status: z.enum(['pending', 'purchased', 'cancelled']),
+});
+
 export type CreateInventoryInput = z.infer<typeof createInventorySchema>;
 export type UpdateInventoryInput = z.infer<typeof updateInventorySchema>;
 export type CreateDeckInput = z.infer<typeof createDeckSchema>;
@@ -112,3 +144,7 @@ export type CompareDecklistInput = z.infer<typeof compareDecklistSchema>;
 export type RemoveCardSlotInput = z.infer<typeof removeCardSlotSchema>;
 export type AssignCardInput = z.infer<typeof assignCardSchema>;
 export type RemoveCardInput = z.infer<typeof removeCardSchema>;
+export type BuyListQueryInput = z.infer<typeof buyListQuerySchema>;
+export type AddBuyListInput = z.infer<typeof addBuyListSchema>;
+export type UpdateBuyListInput = z.infer<typeof updateBuyListSchema>;
+export type UpdateBuyListStatusInput = z.infer<typeof updateBuyListStatusSchema>;

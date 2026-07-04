@@ -57,6 +57,18 @@ enum MovementType {
   returned
 }
 
+enum BuyListPriority {
+  low
+  normal
+  high
+}
+
+enum BuyListStatus {
+  pending
+  purchased
+  cancelled
+}
+
 model CardCatalogItem {
   id              String   @id
   name            String
@@ -75,6 +87,7 @@ model CardCatalogItem {
 
   inventoryItems InventoryItem[]
   deckCards      DeckCard[]
+  buyListItems   BuyListItem[]
 
   @@map("card_catalog_items")
 }
@@ -144,6 +157,7 @@ model Deck {
   cards          DeckCard[]
   assignedCopies PhysicalCardCopy[]
   movements      Movement[]
+  buyListItems   BuyListItem[]
 
   @@map("decks")
 }
@@ -191,4 +205,28 @@ model Movement {
   deck          Deck?             @relation(fields: [deckId], references: [id], onDelete: SetNull)
 
   @@map("movements")
+}
+
+model BuyListItem {
+  id                String          @id @default(uuid())
+  catalogCardId     String
+  cardName          String
+  supertype         Supertype
+  playableCardKey   String
+  desiredQuantity   Int
+  acquiredQuantity  Int             @default(0)
+  priority          BuyListPriority @default(normal)
+  status            BuyListStatus   @default(pending)
+  sourceDeckId      String?
+  notes             String?
+  addedAt           DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  catalogCard CardCatalogItem @relation(fields: [catalogCardId], references: [id])
+  sourceDeck  Deck?           @relation(fields: [sourceDeckId], references: [id], onDelete: SetNull)
+
+  @@index([playableCardKey, status, sourceDeckId])
+  @@index([status])
+  @@index([sourceDeckId])
+  @@map("buy_list_items")
 }

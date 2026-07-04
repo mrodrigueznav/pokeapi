@@ -120,3 +120,27 @@ export interface PokemonTcgApiCard {
 }
 
 export type SupertypeEnum = Supertype;
+
+export type BuyListPriority = 'low' | 'normal' | 'high';
+export type BuyListStatus = 'pending' | 'purchased' | 'cancelled';
+
+export interface BuyListItemDto {
+  id: string;
+  catalogCardId: string;
+  cardName: string;
+  supertype: string;
+  playableCardKey: string;
+  desiredQuantity: number;
+  acquiredQuantity: number;
+  priority: BuyListPriority;
+  status: BuyListStatus;
+  sourceDeckId: string | null;
+  notes: string | null;
+  addedAt: string;
+  updatedAt: string;
+}
+
+export interface AddMissingToBuyListResult {
+  added: number;
+  items: BuyListItemDto[];
+}

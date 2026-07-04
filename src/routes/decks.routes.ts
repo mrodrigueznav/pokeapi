@@ -9,10 +9,15 @@ import {
   assignCardSchema,
   removeCardSchema,
 } from '../schemas';
+import { buylistController } from '../controllers/buylist.controller';
 
 const router = Router();
 
 router.get('/', asyncHandler(deckController.list));
+router.post(
+  '/:deckId/buylist/add-missing',
+  asyncHandler(buylistController.addMissingFromDeck)
+);
 router.get('/:id', asyncHandler(deckController.getById));
 router.post('/', validateBody(createDeckSchema), asyncHandler(deckController.create));
 router.patch('/:id', validateBody(updateDeckSchema), asyncHandler(deckController.update));

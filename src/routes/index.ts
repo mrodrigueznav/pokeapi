@@ -5,6 +5,7 @@ import decksRoutes from './decks.routes';
 import locationsRoutes from './locations.routes';
 import movementsRoutes from './movements.routes';
 import decklistsRoutes from './decklists.routes';
+import buylistRoutes from './buylist.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/decks', decksRoutes);
 router.use('/locations', locationsRoutes);
 router.use('/movements', movementsRoutes);
 router.use('/decklists', decklistsRoutes);
+router.use('/buylist', buylistRoutes);
 
 export default router;

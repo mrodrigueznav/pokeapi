@@ -3,6 +3,7 @@ import { CreateDeckInput, UpdateDeckInput, AddCardSlotInput } from '../schemas';
 import { playableKey } from '../utils/playableKey';
 import { calculateDeckStatus } from '../utils/deckStatus';
 import { catalogRepository } from './catalog.repository';
+import { buylistRepository } from './buylist.repository';
 import { AppError, notFound } from '../utils/errors';
 import { mapDeckCard } from '../utils/mappers';
 
@@ -116,6 +117,8 @@ export const deckRepository = {
           });
         }
       }
+
+      await buylistRepository.detachFromDeck(id, tx);
 
       await tx.deck.delete({ where: { id } });
     });
