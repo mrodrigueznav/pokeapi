@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Supertype {
+  Pokemon @map("Pokémon")
+  Trainer
+  Energy
+}
+
+enum PhysicalCopyStatus {
+  available
+  assigned
+  loaned
+  missing
+  sold
+}
+
+enum DeckType {
+  active
+  reference
+}
+
+enum DeckFormat {
+  Standard
+  Expanded
+  Casual
+}
+
+enum DeckStatus {
+  complete
+  incomplete
+  invalid
+}
+
+enum LocationType {
+  binder
+  deckbox
+  bulk
+  loan
+  sale
+  lost
+  other
+}
+
+enum MovementType {
+  added
+  moved
+  assigned
+  unassigned
+  loaned
+  returned
+}
+
+model CardCatalogItem {
+  id              String   @id
+  name            String
+  supertype       Supertype
+  subtypes        String[]
+  types           String[]
+  setId           String
+  setName         String
+  number          String
+  rarity          String
+  imageUrl        String
+  imageUrlLarge   String?
+  regulationMark  String?
+  legalities      Json?
+  rules           String[]
+
+  inventoryItems InventoryItem[]
+  deckCards      DeckCard[]
+
+  @@map("card_catalog_items")
+}
+
+model Location {
+  id   String       @id @default(uuid())
+  name String
+  type LocationType
+
+  inventoryItems  InventoryItem[]
+  physicalCopies  PhysicalCardCopy[]
+
+  @@map("locations")
+}
+
+model InventoryItem {
+  id              String   @id @default(uuid())
+  catalogCardId   String
+  playableCardKey String
+  variant         String   @default("normal")
+  finish          String   @default("non-holo")
+  language        String   @default("EN")
+  condition       String   @default("NM")
+  quantity        Int
+  locationId      String?
+  notes           String?
+  tags            String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  catalogCard    CardCatalogItem    @relation(fields: [catalogCardId], references: [id])
+  location       Location?          @relation(fields: [locationId], references: [id])
+  physicalCopies PhysicalCardCopy[]
+  movements      Movement[]
+
+  @@map("inventory_items")
+}
+
+model PhysicalCardCopy {
+  id              String             @id @default(uuid())
+  inventoryItemId String
+  status          PhysicalCopyStatus @default(available)
+  assignedDeckId  String?
+  locationId      String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  inventoryItem InventoryItem          @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  assignedDeck  Deck?                  @relation(fields: [assignedDeckId], references: [id], onDelete: SetNull)
+  location      Location?              @relation(fields: [locationId], references: [id])
+  assignments   DeckCardAssignment[]
+  movements     Movement[]
+
+  @@map("physical_card_copies")
+}
+
+model Deck {
+  id        String     @id @default(uuid())
+  name      String
+  type      DeckType
+  format    DeckFormat
+  status    DeckStatus @default(incomplete)
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  cards          DeckCard[]
+  assignedCopies PhysicalCardCopy[]
+  movements      Movement[]
+
+  @@map("decks")
+}
+
+model DeckCard {
+  id               String @id @default(uuid())
+  deckId           String
+  playableCardKey  String
+  catalogCardId    String
+  requiredQuantity Int
+
+  deck        Deck                 @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  catalogCard CardCatalogItem      @relation(fields: [catalogCardId], references: [id])
+  assignments DeckCardAssignment[]
+
+  @@unique([deckId, playableCardKey])
+  @@map("deck_cards")
+}
+
+model DeckCardAssignment {
+  id             String @id @default(uuid())
+  deckCardId     String
+  physicalCopyId String
+
+  deckCard     DeckCard         @relation(fields: [deckCardId], references: [id], onDelete: Cascade)
+  physicalCopy PhysicalCardCopy @relation(fields: [physicalCopyId], references: [id], onDelete: Cascade)
+
+  @@unique([physicalCopyId])
+  @@map("deck_card_assignments")
+}
+
+model Movement {
+  id              String       @id @default(uuid())
+  at              DateTime     @default(now())
+  type            MovementType
+  inventoryItemId String?
+  physicalCopyId  String?
+  deckId          String?
+  from            String?
+  to              String?
+  note            String?
+
+  inventoryItem InventoryItem?    @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  physicalCopy  PhysicalCardCopy? @relation(fields: [physicalCopyId], references: [id], onDelete: SetNull)
+  deck          Deck?             @relation(fields: [deckId], references: [id], onDelete: SetNull)
+
+  @@map("movements")
+}
