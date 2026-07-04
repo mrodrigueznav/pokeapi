@@ -4,6 +4,8 @@ import routes from './routes';
 import { errorHandler } from './utils/middleware';
 import { logInfo } from './utils/logger';
 
+const API_BASE_PATH = '/api/v1';
+
 export function createApp() {
   const app = express();
 
@@ -17,7 +19,11 @@ export function createApp() {
     next();
   });
 
-  app.use(routes);
+  app.get('/health', (_req, res) => {
+    res.json({ ok: true });
+  });
+
+  app.use(API_BASE_PATH, routes);
 
   app.use(errorHandler);
 

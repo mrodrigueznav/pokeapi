@@ -50,7 +50,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-API runs at `http://localhost:4000` by default.
+API runs at `http://localhost:4000` by default. Versioned endpoints are mounted under `/api/v1`.
 
 ## Environment variables
 
@@ -80,57 +80,58 @@ CORS is enabled for all origins.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | `{ "ok": true }` |
+| GET | `/api/v1/health` | Versioned health check |
 
 ### Catalog
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/cards/search` | Search Pokémon TCG API (`q`, `supertype`, `subtype`, `setId`, `rarity`, `page`, `pageSize`) |
-| GET | `/cards/:id` | Get card (local first, then API) |
+| GET | `/api/v1/cards/search` | Search Pokémon TCG API (`q`, `supertype`, `subtype`, `setId`, `rarity`, `page`, `pageSize`) |
+| GET | `/api/v1/cards/:id` | Get card (local first, then API) |
 
 ### Inventory
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/inventory` | List inventory with catalog, copies, location |
-| POST | `/inventory` | Add inventory (creates N physical copies) |
-| PATCH | `/inventory/:id` | Update item (location change skips assigned copies) |
-| POST | `/inventory/:id/loan` | Loan an available copy |
-| POST | `/inventory/:id/return` | Return a loaned copy |
+| GET | `/api/v1/inventory` | List inventory with catalog, copies, location |
+| POST | `/api/v1/inventory` | Add inventory (creates N physical copies) |
+| PATCH | `/api/v1/inventory/:id` | Update item (location change skips assigned copies) |
+| POST | `/api/v1/inventory/:id/loan` | Loan an available copy |
+| POST | `/api/v1/inventory/:id/return` | Return a loaned copy |
 
 ### Decks
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/decks` | All decks with cards & recalculated status |
-| GET | `/decks/:id` | Deck detail |
-| POST | `/decks` | Create deck |
-| PATCH | `/decks/:id` | Update name/format/notes |
-| DELETE | `/decks/:id` | Delete deck & release copies |
-| POST | `/decks/:id/add-card-slot` | Add/merge card slot |
-| POST | `/decks/:id/remove-card-slot` | Remove slot & release copies |
-| POST | `/decks/:id/assign-card` | Assign physical copy to slot |
-| POST | `/decks/:id/remove-card` | Unassign copy from slot |
+| GET | `/api/v1/decks` | All decks with cards & recalculated status |
+| GET | `/api/v1/decks/:id` | Deck detail |
+| POST | `/api/v1/decks` | Create deck |
+| PATCH | `/api/v1/decks/:id` | Update name/format/notes |
+| DELETE | `/api/v1/decks/:id` | Delete deck & release copies |
+| POST | `/api/v1/decks/:id/add-card-slot` | Add/merge card slot |
+| POST | `/api/v1/decks/:id/remove-card-slot` | Remove slot & release copies |
+| POST | `/api/v1/decks/:id/assign-card` | Assign physical copy to slot |
+| POST | `/api/v1/decks/:id/remove-card` | Unassign copy from slot |
 
 ### Decklist comparator
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/decklists/compare` | Compare text decklist vs inventory |
+| POST | `/api/v1/decklists/compare` | Compare text decklist vs inventory |
 
 ### Locations
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/locations` | List locations |
-| POST | `/locations` | Create location |
-| DELETE | `/locations/:id` | Delete (blocked if in use) |
+| GET | `/api/v1/locations` | List locations |
+| POST | `/api/v1/locations` | Create location |
+| DELETE | `/api/v1/locations/:id` | Delete (blocked if in use) |
 
 ### Movements
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/movements` | Audit log (`inventoryItemId`, `physicalCopyId`, `deckId` filters) |
+| GET | `/api/v1/movements` | Audit log (`inventoryItemId`, `physicalCopyId`, `deckId` filters) |
 
 ## Error format
 
