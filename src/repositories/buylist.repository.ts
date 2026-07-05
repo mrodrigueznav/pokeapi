@@ -25,13 +25,15 @@ function sortByPriority(items: BuyListItem[]): BuyListItem[] {
 
 async function findPendingDuplicate(
   playableCardKey: string,
-  sourceDeckId: string | null | undefined
+  sourceDeckId: string | null | undefined,
+  sourceDecklistId: string | null | undefined
 ): Promise<BuyListItem | null> {
   return prisma.buyListItem.findFirst({
     where: {
       playableCardKey,
       status: BuyListStatus.pending,
       sourceDeckId: sourceDeckId ?? null,
+      sourceDecklistId: sourceDecklistId ?? null,
     },
   });
 }
@@ -42,6 +44,7 @@ export const buylistRepository = {
       where: {
         ...(filters.status && { status: filters.status }),
         ...(filters.sourceDeckId && { sourceDeckId: filters.sourceDeckId }),
+        ...(filters.sourceDecklistId && { sourceDecklistId: filters.sourceDecklistId }),
         ...(filters.priority && { priority: filters.priority }),
       },
     });
@@ -62,7 +65,7 @@ export const buylistRepository = {
       supertype: input.supertype,
     });
 
-    const existing = await findPendingDuplicate(key, input.sourceDeckId);
+    const existing = await findPendingDuplicate(key, input.sourceDeckId, input.sourceDecklistId);
 
     if (existing) {
       const priority =
@@ -89,6 +92,7 @@ export const buylistRepository = {
         priority: input.priority ?? BuyListPriority.normal,
         status: BuyListStatus.pending,
         sourceDeckId: input.sourceDeckId ?? null,
+        sourceDecklistId: input.sourceDecklistId ?? null,
         notes: input.notes ?? null,
       },
     });
@@ -158,43 +162,64 @@ export const buylistRepository = {
     const deck = await prisma.deck.findUnique({
       where: { id: deckId },
       include: {
-        cards: {
-          include: {
-            catalogCard: true,
-            assignments: true,
-          },
-        },
+        decklist: { include: { cards: { include: { catalogCard: true } } } },
+        assignments: true,
       },
     });
 
     if (!deck) throw notFound('Deck', deckId);
 
-    if (deck.type !== 'active') {
-      throw new AppError(
-        'DECK_NOT_ACTIVE',
-        'Only active decks can generate buy list missing items',
-        400
-      );
-    }
-
     let added = 0;
     const items: BuyListItem[] = [];
 
-    for (const deckCard of deck.cards) {
-      const stillNeeded = deckCard.requiredQuantity - deckCard.assignments.length;
+    for (const card of deck.decklist.cards) {
+      const assigned = deck.assignments.filter((a) => a.decklistCardId === card.id).length;
+      const stillNeeded = card.quantity - assigned;
       if (stillNeeded <= 0) continue;
 
-      const available = await this.countAvailableByPlayableKey(deckCard.playableCardKey);
+      const available = await this.countAvailableByPlayableKey(card.playableCardKey);
       const missing = stillNeeded - available;
 
       if (missing <= 0) continue;
 
       const item = await this.add({
-        catalogCardId: deckCard.catalogCardId,
-        cardName: deckCard.catalogCard.name,
-        supertype: supertypeToDisplay(deckCard.catalogCard.supertype) as 'Pokémon' | 'Trainer' | 'Energy',
+        catalogCardId: card.catalogCardId,
+        cardName: card.catalogCard.name,
+        supertype: supertypeToDisplay(card.catalogCard.supertype) as 'Pokémon' | 'Trainer' | 'Energy',
         quantity: missing,
         sourceDeckId: deckId,
+      });
+
+      added += missing;
+      items.push(item);
+    }
+
+    return { added, items };
+  },
+
+  async addMissingFromDecklist(decklistId: string): Promise<{ added: number; items: BuyListItem[] }> {
+    const decklist = await prisma.decklist.findUnique({
+      where: { id: decklistId },
+      include: { cards: { include: { catalogCard: true } } },
+    });
+
+    if (!decklist) throw notFound('Decklist', decklistId);
+
+    let added = 0;
+    const items: BuyListItem[] = [];
+
+    for (const card of decklist.cards) {
+      const available = await this.countAvailableByPlayableKey(card.playableCardKey);
+      const missing = card.quantity - available;
+
+      if (missing <= 0) continue;
+
+      const item = await this.add({
+        catalogCardId: card.catalogCardId,
+        cardName: card.catalogCard.name,
+        supertype: supertypeToDisplay(card.catalogCard.supertype) as 'Pokémon' | 'Trainer' | 'Energy',
+        quantity: missing,
+        sourceDecklistId: decklistId,
       });
 
       added += missing;

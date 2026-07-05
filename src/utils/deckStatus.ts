@@ -1,33 +1,25 @@
-import { DeckStatus, DeckType } from '@prisma/client';
+import { DeckStatus } from '@prisma/client';
 
 export interface DeckStatusInput {
-  type: DeckType;
   cards: Array<{
-    requiredQuantity: number;
+    quantity: number;
     assignedPhysicalCopyIds: string[];
   }>;
 }
 
 /**
- * Calculates deck status based on type, card requirements, and assignments.
- * Never trust client-provided status.
+ * Deck status is based on its decklist composition + physical copy assignments.
  */
 export function calculateDeckStatus(deck: DeckStatusInput): DeckStatus {
-  const totalRequired = deck.cards.reduce((sum, c) => sum + c.requiredQuantity, 0);
+  const totalRequired = deck.cards.reduce((sum, c) => sum + c.quantity, 0);
 
   if (totalRequired > 60) {
     return DeckStatus.invalid;
   }
 
-  if (deck.type === DeckType.reference) {
-    if (totalRequired === 60) return DeckStatus.complete;
-    return DeckStatus.incomplete;
-  }
-
-  // active deck
   if (totalRequired === 60) {
     const allSlotsFilled = deck.cards.every(
-      (c) => c.assignedPhysicalCopyIds.length >= c.requiredQuantity
+      (c) => c.assignedPhysicalCopyIds.length >= c.quantity
     );
     return allSlotsFilled ? DeckStatus.complete : DeckStatus.incomplete;
   }

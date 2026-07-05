@@ -1,6 +1,6 @@
 # TCG Deck Inventory API
 
-REST API backend for **TCG Deck Inventory** — a tool for Pokémon TCG players to manage physical card inventory, track individual copies, build active/reference decks, and compare decklists against owned cards.
+REST API backend for **TCG Deck Inventory** — a tool for Pokémon TCG players to manage physical card inventory, track individual copies, build decklists, assign collection copies to decks, and compare decklists against owned cards.
 
 ## Stack
 
@@ -17,7 +17,9 @@ REST API backend for **TCG Deck Inventory** — a tool for Pokémon TCG players 
 | `CardCatalogItem` | Official print from a set (e.g. `sv3-125`) |
 | `InventoryItem` | Group of identical physical copies (same card, variant, finish, language, condition, location) |
 | `PhysicalCardCopy` | One individual physical card |
-| `Deck` | Active (consumes copies) or reference (decklist only) |
+| `Decklist` | Template of cards (name, format, slots). Does **not** use collection copies |
+| `DecklistCard` | One slot in a decklist (`playableCardKey`, `catalogCardId`, `quantity`) |
+| `Deck` | Physical deck built from a decklist — assigns `PhysicalCardCopy` records to `DecklistCard` slots |
 | `playableCardKey` | `"<supertype>::<name lowercase>"` — matches playable identity across prints |
 
 ## Installation
@@ -122,26 +124,33 @@ The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyLis
 | POST | `/api/v1/inventory/:id/loan` | Loan an available copy |
 | POST | `/api/v1/inventory/:id/return` | Return a loaned copy |
 
-### Decks
+### Decklists (template)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/decks` | All decks with cards & recalculated status |
-| GET | `/api/v1/decks/:id` | Deck detail |
-| POST | `/api/v1/decks` | Create deck |
-| PATCH | `/api/v1/decks/:id` | Update name/format/notes |
-| DELETE | `/api/v1/decks/:id` | Delete deck & release copies |
-| POST | `/api/v1/decks/:id/add-card-slot` | Add/merge card slot |
-| POST | `/api/v1/decks/:id/remove-card-slot` | Remove slot & release copies |
-| POST | `/api/v1/decks/:id/assign-card` | Assign physical copy to slot |
-| POST | `/api/v1/decks/:id/remove-card` | Unassign copy from slot |
-
-### Decklist comparator
-
-| Method | Path | Description |
-|--------|------|-------------|
+| GET | `/api/v1/decklists` | All decklists with cards & recalculated status |
+| GET | `/api/v1/decklists/:id` | Decklist detail |
+| POST | `/api/v1/decklists` | Create decklist `{ name, format, notes? }` |
+| PATCH | `/api/v1/decklists/:id` | Update name/format/notes |
+| DELETE | `/api/v1/decklists/:id` | Delete decklist (blocked if decks reference it) |
+| POST | `/api/v1/decklists/:id/add-card` | Add/merge card slot `{ playableCardKey, catalogCardId, quantity }` |
+| POST | `/api/v1/decklists/:id/remove-card` | Remove slot `{ decklistCardId }` |
 | POST | `/api/v1/decklists/compare` | Compare text decklist vs inventory |
 | POST | `/api/v1/decklists/import-limitless` | Import Limitless TCG export → decklist + slots |
+| POST | `/api/v1/decklists/:id/buylist/add-missing` | Add missing cards from decklist to buy list |
+
+### Decks (physical)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/decks` | All decks with decklist, assignments & recalculated status |
+| GET | `/api/v1/decks/:id` | Deck detail |
+| POST | `/api/v1/decks` | Create deck from decklist `{ decklistId, name?, notes? }` |
+| PATCH | `/api/v1/decks/:id` | Update name/notes |
+| DELETE | `/api/v1/decks/:id` | Delete deck & release copies |
+| POST | `/api/v1/decks/:id/assign-card` | Assign copy `{ decklistCardId, physicalCopyId }` |
+| POST | `/api/v1/decks/:id/remove-card` | Unassign copy `{ decklistCardId, physicalCopyId }` |
+| POST | `/api/v1/decks/:id/buylist/add-missing` | Add missing copies from physical deck to buy list |
 
 ### Locations
 
@@ -161,15 +170,14 @@ The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyLis
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/buylist` | List buy list items (`status`, `sourceDeckId`, `priority` filters) |
-| POST | `/api/v1/buylist` | Add item manually (deduplicates pending by `playableCardKey` + `sourceDeckId`) |
+| GET | `/api/v1/buylist` | List buy list items (`status`, `sourceDeckId`, `sourceDecklistId`, `priority` filters) |
+| POST | `/api/v1/buylist` | Add item manually (deduplicates pending by `playableCardKey` + source) |
 | PATCH | `/api/v1/buylist/:id` | Update quantity, priority, status, notes |
 | POST | `/api/v1/buylist/:id/status` | Shortcut to change status only |
 | DELETE | `/api/v1/buylist/:id` | Remove item |
 | POST | `/api/v1/buylist/clear-purchased` | Delete all purchased items |
-| POST | `/api/v1/decks/:deckId/buylist/add-missing` | Add missing copies from active deck |
 
-When a deck is deleted, linked buy list items keep their record but `sourceDeckId` is set to `null`.
+When a deck or decklist is deleted, linked buy list items keep their record but `sourceDeckId` / `sourceDecklistId` is set to `null`.
 
 ## Error format
 
@@ -184,7 +192,7 @@ When a deck is deleted, linked buy list items keep their record but `sourceDeckI
 }
 ```
 
-Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `COPY_NOT_AVAILABLE`, `DECK_SLOT_FULL`, `DECK_NOT_ACTIVE`, `COPY_DOES_NOT_MATCH_SLOT`, `LOCATION_IN_USE`, `DATABASE_ERROR`, `DATABASE_NOT_READY`, `EXTERNAL_API_ERROR`, `INTERNAL_ERROR`.
+Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `COPY_NOT_AVAILABLE`, `DECK_SLOT_FULL`, `COPY_DOES_NOT_MATCH_SLOT`, `DECKLIST_IN_USE`, `LOCATION_IN_USE`, `DATABASE_ERROR`, `DATABASE_NOT_READY`, `EXTERNAL_API_ERROR`, `INTERNAL_ERROR`.
 
 ## Project structure
 
@@ -204,11 +212,20 @@ prisma/
 └── seed.ts
 ```
 
-## Deck status rules
+## Status rules
 
-- `totalRequired > 60` → **invalid**
-- **reference**: 60 cards → **complete**, else **incomplete**
-- **active**: 60 cards + all slots fully assigned → **complete**, else **incomplete**
+### Decklist
+
+- `totalQuantity > 60` → **invalid**
+- `totalQuantity === 60` → **complete**
+- otherwise → **incomplete**
+
+### Deck
+
+- Based on its linked decklist composition + physical copy assignments
+- `totalQuantity > 60` → **invalid**
+- `totalQuantity === 60` and every slot fully assigned → **complete**
+- otherwise → **incomplete**
 
 Status is always computed server-side.
 

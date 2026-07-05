@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
 import { deckService } from '../services/deck.service';
-import { mapDeck } from '../utils/mappers';
+import { buylistService } from '../services/buylist.service';
+import { mapDeck, mapBuyListItem } from '../utils/mappers';
 import {
   CreateDeckInput,
   UpdateDeckInput,
-  AddCardSlotInput,
-  RemoveCardSlotInput,
   AssignCardInput,
   RemoveCardInput,
 } from '../schemas';
@@ -43,27 +42,23 @@ export const deckController = {
     res.status(204).send();
   },
 
-  async addCardSlot(req: Request, res: Response): Promise<void> {
-    const input = getValidatedBody<AddCardSlotInput>(req);
-    const deck = await deckService.addCardSlot(getParam(req, 'id'), input);
-    res.json(mapDeck(deck));
-  },
-
-  async removeCardSlot(req: Request, res: Response): Promise<void> {
-    const { deckCardId } = getValidatedBody<RemoveCardSlotInput>(req);
-    const deck = await deckService.removeCardSlot(getParam(req, 'id'), deckCardId);
-    res.json(mapDeck(deck));
-  },
-
   async assignCard(req: Request, res: Response): Promise<void> {
-    const { deckCardId, physicalCopyId } = getValidatedBody<AssignCardInput>(req);
-    const deck = await deckService.assignCard(getParam(req, 'id'), deckCardId, physicalCopyId);
+    const { decklistCardId, physicalCopyId } = getValidatedBody<AssignCardInput>(req);
+    const deck = await deckService.assignCard(getParam(req, 'id'), decklistCardId, physicalCopyId);
     res.json(mapDeck(deck));
   },
 
   async removeCard(req: Request, res: Response): Promise<void> {
-    const { deckCardId, physicalCopyId } = getValidatedBody<RemoveCardInput>(req);
-    const deck = await deckService.removeCard(getParam(req, 'id'), deckCardId, physicalCopyId);
+    const { decklistCardId, physicalCopyId } = getValidatedBody<RemoveCardInput>(req);
+    const deck = await deckService.removeCard(getParam(req, 'id'), decklistCardId, physicalCopyId);
     res.json(mapDeck(deck));
+  },
+
+  async addMissingToBuylist(req: Request, res: Response): Promise<void> {
+    const result = await buylistService.addMissingFromDeck(getParam(req, 'id'));
+    res.json({
+      added: result.added,
+      items: result.items.map(mapBuyListItem),
+    });
   },
 };

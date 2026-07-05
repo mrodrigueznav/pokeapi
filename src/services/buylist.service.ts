@@ -34,4 +34,8 @@ export const buylistService = {
   addMissingFromDeck(deckId: string) {
     return buylistRepository.addMissingFromDeck(deckId);
   },
+
+  addMissingFromDecklist(decklistId: string) {
+    return buylistRepository.addMissingFromDecklist(decklistId);
+  },
 };

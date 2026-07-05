@@ -22,15 +22,16 @@ enum PhysicalCopyStatus {
   sold
 }
 
-enum DeckType {
-  active
-  reference
-}
-
 enum DeckFormat {
   Standard
   Expanded
   Casual
+}
+
+enum DecklistStatus {
+  complete
+  incomplete
+  invalid
 }
 
 enum DeckStatus {
@@ -87,7 +88,7 @@ model CardCatalogItem {
   rules           String[]
 
   inventoryItems InventoryItem[]
-  deckCards      DeckCard[]
+  decklistCards  DecklistCard[]
   buyListItems   BuyListItem[]
 
   @@map("card_catalog_items")
@@ -98,8 +99,8 @@ model Location {
   name String
   type LocationType
 
-  inventoryItems  InventoryItem[]
-  physicalCopies  PhysicalCardCopy[]
+  inventoryItems InventoryItem[]
+  physicalCopies PhysicalCardCopy[]
 
   @@map("locations")
 }
@@ -136,26 +137,59 @@ model PhysicalCardCopy {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  inventoryItem InventoryItem          @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  assignedDeck  Deck?                  @relation(fields: [assignedDeckId], references: [id], onDelete: SetNull)
-  location      Location?              @relation(fields: [locationId], references: [id])
+  inventoryItem InventoryItem        @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  assignedDeck  Deck?                @relation(fields: [assignedDeckId], references: [id], onDelete: SetNull)
+  location      Location?            @relation(fields: [locationId], references: [id])
   assignments   DeckCardAssignment[]
   movements     Movement[]
 
   @@map("physical_card_copies")
 }
 
-model Deck {
-  id        String     @id @default(uuid())
+/// Template list of cards — does NOT use collection copies.
+model Decklist {
+  id        String         @id @default(uuid())
   name      String
-  type      DeckType
   format    DeckFormat
-  status    DeckStatus @default(incomplete)
+  status    DecklistStatus @default(incomplete)
   notes     String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
-  cards          DeckCard[]
+  cards        DecklistCard[]
+  decks        Deck[]
+  buyListItems BuyListItem[]
+
+  @@map("decklists")
+}
+
+model DecklistCard {
+  id              String @id @default(uuid())
+  decklistId      String
+  playableCardKey String
+  catalogCardId   String
+  quantity        Int
+
+  decklist    Decklist             @relation(fields: [decklistId], references: [id], onDelete: Cascade)
+  catalogCard CardCatalogItem      @relation(fields: [catalogCardId], references: [id])
+  assignments DeckCardAssignment[]
+
+  @@unique([decklistId, playableCardKey])
+  @@map("decklist_cards")
+}
+
+/// Physical deck built from a decklist with collection copies assigned.
+model Deck {
+  id         String     @id @default(uuid())
+  name       String
+  decklistId String
+  status     DeckStatus @default(incomplete)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  decklist       Decklist             @relation(fields: [decklistId], references: [id], onDelete: Restrict)
+  assignments    DeckCardAssignment[]
   assignedCopies PhysicalCardCopy[]
   movements      Movement[]
   buyListItems   BuyListItem[]
@@ -163,27 +197,14 @@ model Deck {
   @@map("decks")
 }
 
-model DeckCard {
-  id               String @id @default(uuid())
-  deckId           String
-  playableCardKey  String
-  catalogCardId    String
-  requiredQuantity Int
-
-  deck        Deck                 @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  catalogCard CardCatalogItem      @relation(fields: [catalogCardId], references: [id])
-  assignments DeckCardAssignment[]
-
-  @@unique([deckId, playableCardKey])
-  @@map("deck_cards")
-}
-
 model DeckCardAssignment {
   id             String @id @default(uuid())
-  deckCardId     String
+  deckId         String
+  decklistCardId String
   physicalCopyId String
 
-  deckCard     DeckCard         @relation(fields: [deckCardId], references: [id], onDelete: Cascade)
+  deck         Deck             @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  decklistCard DecklistCard     @relation(fields: [decklistCardId], references: [id], onDelete: Cascade)
   physicalCopy PhysicalCardCopy @relation(fields: [physicalCopyId], references: [id], onDelete: Cascade)
 
   @@unique([physicalCopyId])
@@ -219,15 +240,19 @@ model BuyListItem {
   priority          BuyListPriority @default(normal)
   status            BuyListStatus   @default(pending)
   sourceDeckId      String?
+  sourceDecklistId  String?
   notes             String?
   addedAt           DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  catalogCard CardCatalogItem @relation(fields: [catalogCardId], references: [id])
-  sourceDeck  Deck?           @relation(fields: [sourceDeckId], references: [id], onDelete: SetNull)
+  catalogCard    CardCatalogItem @relation(fields: [catalogCardId], references: [id])
+  sourceDeck     Deck?           @relation(fields: [sourceDeckId], references: [id], onDelete: SetNull)
+  sourceDecklist Decklist?       @relation(fields: [sourceDecklistId], references: [id], onDelete: SetNull)
 
   @@index([playableCardKey, status, sourceDeckId])
+  @@index([playableCardKey, status, sourceDecklistId])
   @@index([status])
   @@index([sourceDeckId])
+  @@index([sourceDecklistId])
   @@map("buy_list_items")
 }

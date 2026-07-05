@@ -79,26 +79,36 @@ export interface LocationDto {
   type: string;
 }
 
-export interface DeckCardDto {
+export interface DecklistCardDto {
   id: string;
-  deckId: string;
+  decklistId: string;
   playableCardKey: string;
   catalogCardId: string;
-  requiredQuantity: number;
-  assignedPhysicalCopyIds: string[];
+  quantity: number;
+  assignedPhysicalCopyIds?: string[];
   catalogCard?: CardCatalogItemDto;
 }
 
-export interface DeckDto {
+export interface DecklistDto {
   id: string;
   name: string;
-  type: string;
   format: string;
   status: string;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  cards?: DeckCardDto[];
+  cards?: DecklistCardDto[];
+}
+
+export interface DeckDto {
+  id: string;
+  name: string;
+  decklistId: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  decklist?: DecklistDto;
 }
 
 export interface MovementDto {
@@ -190,6 +200,7 @@ export interface BuyListItemDto {
   priority: BuyListPriority;
   status: BuyListStatus;
   sourceDeckId: string | null;
+  sourceDecklistId: string | null;
   notes: string | null;
   addedAt: string;
   updatedAt: string;

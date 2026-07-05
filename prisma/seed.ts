@@ -171,7 +171,9 @@ async function main() {
 
   await prisma.movement.deleteMany();
   await prisma.deckCardAssignment.deleteMany();
-  await prisma.deckCard.deleteMany();
+  await prisma.deck.deleteMany();
+  await prisma.decklistCard.deleteMany();
+  await prisma.decklist.deleteMany();
   await prisma.physicalCardCopy.deleteMany();
   await prisma.inventoryItem.deleteMany();
   await prisma.buyListItem.deleteMany();
@@ -356,40 +358,48 @@ async function main() {
     });
   }
 
+  const charizardDecklist = await prisma.decklist.create({
+    data: {
+      name: 'Charizard ex — Standard (list)',
+      format: 'Standard',
+      status: 'incomplete',
+      notes: 'Decklist template — 10 cards for demo',
+    },
+  });
+
+  const charizardListCard = await prisma.decklistCard.create({
+    data: {
+      decklistId: charizardDecklist.id,
+      playableCardKey: charizardKey,
+      catalogCardId: 'sv3-125',
+      quantity: 3,
+    },
+  });
+
+  const nestBallListCard = await prisma.decklistCard.create({
+    data: {
+      decklistId: charizardDecklist.id,
+      playableCardKey: nestBallKey,
+      catalogCardId: 'sv1-181',
+      quantity: 4,
+    },
+  });
+
+  const ionoListCard = await prisma.decklistCard.create({
+    data: {
+      decklistId: charizardDecklist.id,
+      playableCardKey: ionoKey,
+      catalogCardId: 'sv2-185',
+      quantity: 3,
+    },
+  });
+
   const activeDeck = await prisma.deck.create({
     data: {
       name: 'Charizard ex — Standard',
-      type: 'active',
-      format: 'Standard',
+      decklistId: charizardDecklist.id,
       status: 'incomplete',
-      notes: 'Main tournament deck — missing several slots',
-    },
-  });
-
-  const charizardSlot = await prisma.deckCard.create({
-    data: {
-      deckId: activeDeck.id,
-      playableCardKey: charizardKey,
-      catalogCardId: 'sv3-125',
-      requiredQuantity: 3,
-    },
-  });
-
-  const nestBallSlot = await prisma.deckCard.create({
-    data: {
-      deckId: activeDeck.id,
-      playableCardKey: nestBallKey,
-      catalogCardId: 'sv1-181',
-      requiredQuantity: 4,
-    },
-  });
-
-  const ionoSlot = await prisma.deckCard.create({
-    data: {
-      deckId: activeDeck.id,
-      playableCardKey: ionoKey,
-      catalogCardId: 'sv2-185',
-      requiredQuantity: 3,
+      notes: 'Physical deck built from decklist — partially assigned',
     },
   });
 
@@ -398,7 +408,11 @@ async function main() {
     data: { status: 'assigned', assignedDeckId: activeDeck.id },
   });
   await prisma.deckCardAssignment.create({
-    data: { deckCardId: charizardSlot.id, physicalCopyId: charizardCopies[0].id },
+    data: {
+      deckId: activeDeck.id,
+      decklistCardId: charizardListCard.id,
+      physicalCopyId: charizardCopies[0].id,
+    },
   });
 
   await prisma.physicalCardCopy.update({
@@ -406,7 +420,11 @@ async function main() {
     data: { status: 'assigned', assignedDeckId: activeDeck.id },
   });
   await prisma.deckCardAssignment.create({
-    data: { deckCardId: nestBallSlot.id, physicalCopyId: nestBallCopies[0].id },
+    data: {
+      deckId: activeDeck.id,
+      decklistCardId: nestBallListCard.id,
+      physicalCopyId: nestBallCopies[0].id,
+    },
   });
 
   await prisma.buyListItem.createMany({
@@ -421,7 +439,7 @@ async function main() {
         priority: 'high',
         status: 'pending',
         sourceDeckId: activeDeck.id,
-        notes: 'Need more copies for the active deck',
+        notes: 'Need more copies for the physical deck',
       },
       {
         catalogCardId: 'sv2-185',
@@ -432,8 +450,8 @@ async function main() {
         acquiredQuantity: 0,
         priority: 'normal',
         status: 'pending',
-        sourceDeckId: null,
-        notes: 'Manual entry from search',
+        sourceDecklistId: charizardDecklist.id,
+        notes: 'Missing from decklist template',
       },
       {
         catalogCardId: 'sv1-191',
@@ -450,13 +468,12 @@ async function main() {
     ],
   });
 
-  const referenceDeck = await prisma.deck.create({
+  const referenceDecklist = await prisma.decklist.create({
     data: {
       name: 'Meta Reference — Charizard',
-      type: 'reference',
       format: 'Standard',
       status: 'complete',
-      notes: '60-card reference list for comparison',
+      notes: '60-card reference decklist',
     },
   });
 
@@ -473,12 +490,12 @@ async function main() {
   ];
 
   for (const slot of refSlots) {
-    await prisma.deckCard.create({
+    await prisma.decklistCard.create({
       data: {
-        deckId: referenceDeck.id,
+        decklistId: referenceDecklist.id,
         playableCardKey: slot.key,
         catalogCardId: slot.catalogId,
-        requiredQuantity: slot.qty,
+        quantity: slot.qty,
       },
     });
   }
@@ -516,8 +533,9 @@ async function main() {
   console.log('Seed completed successfully.');
   console.log(`  Locations: 4`);
   console.log(`  Catalog cards: ${CATALOG_CARDS.length}`);
-  console.log(`  Active deck: ${activeDeck.name} (incomplete)`);
-  console.log(`  Reference deck: ${referenceDeck.name} (60 cards)`);
+  console.log(`  Decklist (active template): ${charizardDecklist.name}`);
+  console.log(`  Physical deck: ${activeDeck.name} (incomplete)`);
+  console.log(`  Reference decklist: ${referenceDecklist.name} (60 cards)`);
   console.log(`  Buy list items: 3`);
 }
 

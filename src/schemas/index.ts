@@ -38,14 +38,15 @@ export const updateInventorySchema = z
     message: 'At least one field must be provided',
   });
 
-export const createDeckSchema = z.object({
+// --- Decklist (template, no physical copies) ---
+
+export const createDecklistSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['active', 'reference']),
   format: z.enum(['Standard', 'Expanded', 'Casual']),
   notes: z.string().nullable().optional(),
 });
 
-export const updateDeckSchema = z
+export const updateDecklistSchema = z
   .object({
     name: z.string().min(1).optional(),
     format: z.enum(['Standard', 'Expanded', 'Casual']).optional(),
@@ -55,25 +56,15 @@ export const updateDeckSchema = z
     message: 'At least one field must be provided',
   });
 
-export const addCardSlotSchema = z.object({
+export const addDecklistCardSchema = z.object({
   catalogCardId: z.string().min(1),
   cardName: z.string().min(1),
   supertype: z.enum(['Pokémon', 'Trainer', 'Energy']),
-  requiredQuantity: z.number().int().positive(),
+  quantity: z.number().int().positive(),
 });
 
-export const removeCardSlotSchema = z.object({
-  deckCardId: z.string().uuid(),
-});
-
-export const assignCardSchema = z.object({
-  deckCardId: z.string().uuid(),
-  physicalCopyId: z.string().uuid(),
-});
-
-export const removeCardSchema = z.object({
-  deckCardId: z.string().uuid(),
-  physicalCopyId: z.string().uuid(),
+export const removeDecklistCardSchema = z.object({
+  decklistCardId: z.string().uuid(),
 });
 
 export const compareDecklistSchema = z.object({
@@ -82,6 +73,37 @@ export const compareDecklistSchema = z.object({
 
 export const importLimitlessDecklistSchema = z.object({
   decklist: z.string().min(1),
+  name: z.string().min(1).optional(),
+  format: z.enum(['Standard', 'Expanded', 'Casual']).optional(),
+  save: z.boolean().default(true),
+  notes: z.string().nullable().optional(),
+});
+
+// --- Deck (physical instance from a decklist) ---
+
+export const createDeckSchema = z.object({
+  decklistId: z.string().uuid(),
+  name: z.string().min(1).optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export const updateDeckSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });
+
+export const assignCardSchema = z.object({
+  decklistCardId: z.string().uuid(),
+  physicalCopyId: z.string().uuid(),
+});
+
+export const removeCardSchema = z.object({
+  decklistCardId: z.string().uuid(),
+  physicalCopyId: z.string().uuid(),
 });
 
 export const createLocationSchema = z.object({
@@ -109,6 +131,7 @@ export const returnCopySchema = z.object({
 export const buyListQuerySchema = z.object({
   status: z.enum(['pending', 'purchased', 'cancelled']).optional(),
   sourceDeckId: z.string().uuid().optional(),
+  sourceDecklistId: z.string().uuid().optional(),
   priority: z.enum(['low', 'normal', 'high']).optional(),
 });
 
@@ -119,6 +142,7 @@ export const addBuyListSchema = z.object({
   quantity: z.number().int().positive(),
   priority: z.enum(['low', 'normal', 'high']).optional(),
   sourceDeckId: z.string().uuid().nullable().optional(),
+  sourceDecklistId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
@@ -140,15 +164,17 @@ export const updateBuyListStatusSchema = z.object({
 
 export type CreateInventoryInput = z.infer<typeof createInventorySchema>;
 export type UpdateInventoryInput = z.infer<typeof updateInventorySchema>;
+export type CreateDecklistInput = z.infer<typeof createDecklistSchema>;
+export type UpdateDecklistInput = z.infer<typeof updateDecklistSchema>;
+export type AddDecklistCardInput = z.infer<typeof addDecklistCardSchema>;
 export type CreateDeckInput = z.infer<typeof createDeckSchema>;
 export type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
-export type AddCardSlotInput = z.infer<typeof addCardSlotSchema>;
+export type AssignCardInput = z.infer<typeof assignCardSchema>;
+export type RemoveCardInput = z.infer<typeof removeCardSchema>;
 export type CreateLocationInput = z.infer<typeof createLocationSchema>;
 export type CompareDecklistInput = z.infer<typeof compareDecklistSchema>;
 export type ImportLimitlessDecklistInput = z.infer<typeof importLimitlessDecklistSchema>;
-export type RemoveCardSlotInput = z.infer<typeof removeCardSlotSchema>;
-export type AssignCardInput = z.infer<typeof assignCardSchema>;
-export type RemoveCardInput = z.infer<typeof removeCardSchema>;
+export type RemoveDecklistCardInput = z.infer<typeof removeDecklistCardSchema>;
 export type BuyListQueryInput = z.infer<typeof buyListQuerySchema>;
 export type AddBuyListInput = z.infer<typeof addBuyListSchema>;
 export type UpdateBuyListInput = z.infer<typeof updateBuyListSchema>;

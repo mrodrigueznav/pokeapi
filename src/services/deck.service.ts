@@ -1,5 +1,5 @@
 import { deckRepository } from '../repositories/deck.repository';
-import { CreateDeckInput, UpdateDeckInput, AddCardSlotInput } from '../schemas';
+import { CreateDeckInput, UpdateDeckInput } from '../schemas';
 
 export const deckService = {
   list() {
@@ -22,19 +22,11 @@ export const deckService = {
     return deckRepository.delete(id);
   },
 
-  addCardSlot(deckId: string, input: AddCardSlotInput) {
-    return deckRepository.addCardSlot(deckId, input);
+  assignCard(deckId: string, decklistCardId: string, physicalCopyId: string) {
+    return deckRepository.assignCard(deckId, decklistCardId, physicalCopyId);
   },
 
-  removeCardSlot(deckId: string, deckCardId: string) {
-    return deckRepository.removeCardSlot(deckId, deckCardId);
-  },
-
-  assignCard(deckId: string, deckCardId: string, physicalCopyId: string) {
-    return deckRepository.assignCard(deckId, deckCardId, physicalCopyId);
-  },
-
-  removeCard(deckId: string, deckCardId: string, physicalCopyId: string) {
-    return deckRepository.removeCard(deckId, deckCardId, physicalCopyId);
+  removeCard(deckId: string, decklistCardId: string, physicalCopyId: string) {
+    return deckRepository.removeCard(deckId, decklistCardId, physicalCopyId);
   },
 };

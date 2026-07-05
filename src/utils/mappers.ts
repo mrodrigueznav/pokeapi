@@ -2,7 +2,8 @@ import {
   CardCatalogItem,
   BuyListItem,
   Deck,
-  DeckCard,
+  Decklist,
+  DecklistCard,
   DeckCardAssignment,
   InventoryItem,
   Location,
@@ -12,13 +13,13 @@ import {
 import { CardCatalogItemDto } from '../types';
 import { supertypeToDisplay } from './playableKey';
 
-type DeckCardWithRelations = DeckCard & {
-  catalogCard: CardCatalogItem;
-  assignments: DeckCardAssignment[];
+type DecklistWithCards = Decklist & {
+  cards: (DecklistCard & { catalogCard: CardCatalogItem })[];
 };
 
 type DeckWithRelations = Deck & {
-  cards: DeckCardWithRelations[];
+  decklist: DecklistWithCards;
+  assignments: DeckCardAssignment[];
 };
 
 type InventoryItemWithRelations = InventoryItem & {
@@ -123,29 +124,56 @@ export function mapInventoryItem(item: InventoryItemWithRelations) {
   };
 }
 
-export function mapDeckCard(card: DeckCardWithRelations) {
+export function mapDecklistCard(
+  card: DecklistCard & { catalogCard: CardCatalogItem },
+  assignedPhysicalCopyIds: string[] = []
+) {
   return {
     id: card.id,
-    deckId: card.deckId,
+    decklistId: card.decklistId,
     playableCardKey: card.playableCardKey,
     catalogCardId: card.catalogCardId,
-    requiredQuantity: card.requiredQuantity,
-    assignedPhysicalCopyIds: card.assignments.map((a) => a.physicalCopyId),
+    quantity: card.quantity,
+    assignedPhysicalCopyIds,
     catalogCard: mapCatalogCard(card.catalogCard),
   };
 }
 
+export function mapDecklist(decklist: DecklistWithCards) {
+  return {
+    id: decklist.id,
+    name: decklist.name,
+    format: decklist.format,
+    status: decklist.status,
+    notes: decklist.notes,
+    createdAt: decklist.createdAt.toISOString(),
+    updatedAt: decklist.updatedAt.toISOString(),
+    cards: decklist.cards.map((c) => mapDecklistCard(c)),
+  };
+}
+
 export function mapDeck(deck: DeckWithRelations) {
+  const assignmentsByCard = new Map<string, string[]>();
+  for (const a of deck.assignments) {
+    const list = assignmentsByCard.get(a.decklistCardId) ?? [];
+    list.push(a.physicalCopyId);
+    assignmentsByCard.set(a.decklistCardId, list);
+  }
+
   return {
     id: deck.id,
     name: deck.name,
-    type: deck.type,
-    format: deck.format,
+    decklistId: deck.decklistId,
     status: deck.status,
     notes: deck.notes,
     createdAt: deck.createdAt.toISOString(),
     updatedAt: deck.updatedAt.toISOString(),
-    cards: deck.cards.map(mapDeckCard),
+    decklist: {
+      ...mapDecklist(deck.decklist),
+      cards: deck.decklist.cards.map((c) =>
+        mapDecklistCard(c, assignmentsByCard.get(c.id) ?? [])
+      ),
+    },
   };
 }
 
@@ -175,6 +203,7 @@ export function mapBuyListItem(item: BuyListItem) {
     priority: item.priority,
     status: item.status,
     sourceDeckId: item.sourceDeckId,
+    sourceDecklistId: item.sourceDecklistId,
     notes: item.notes,
     addedAt: item.addedAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),

@@ -24,12 +24,12 @@ export const catalogRepository = {
     });
     if (items.length > 0) return items[0].catalogCard;
 
-    const deckCards = await prisma.deckCard.findMany({
+    const decklistCards = await prisma.decklistCard.findMany({
       where: { playableCardKey },
       include: { catalogCard: true },
       take: 1,
     });
-    if (deckCards.length > 0) return deckCards[0].catalogCard;
+    if (decklistCards.length > 0) return decklistCards[0].catalogCard;
 
     return null;
   },

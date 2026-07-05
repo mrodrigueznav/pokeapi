@@ -11,6 +11,8 @@ import {
   mergeLimitlessLinesByCatalog,
   ParsedLimitlessLine,
 } from '../utils/limitlessDecklistParser';
+import { decklistRepository } from '../repositories/decklist.repository';
+import { CreateDecklistInput } from '../schemas';
 import { CardCatalogItemDto, LimitlessImportResult, LimitlessImportSlot } from '../types';
 import { logWarn } from '../utils/logger';
 
@@ -123,5 +125,17 @@ export const limitlessDecklistService = {
       decklist: decklistText,
       slots,
     };
+  },
+
+  saveAsDecklist(slots: LimitlessImportSlot[], input: CreateDecklistInput) {
+    return decklistRepository.createFromSlots(
+      input,
+      slots.map((s) => ({
+        catalogCardId: s.catalogCardId,
+        cardName: s.name,
+        supertype: s.supertype,
+        quantity: s.quantity,
+      }))
+    );
   },
 };
