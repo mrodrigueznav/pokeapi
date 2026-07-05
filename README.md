@@ -85,7 +85,14 @@ Recommended settings:
 | **Start Command** | `npm run prisma:migrate:deploy && npm start` |
 | **Environment** | `DATABASE_URL`, `DIRECT_DATABASE_URL`, `PORT`, optional `POKEMON_TCG_API_KEY` |
 
-On Supabase: use the **pooler** URL (`:6543`) for `DATABASE_URL` and the **direct** URL (`:5432`) for `DIRECT_DATABASE_URL`. Migrations require the direct connection.
+On Supabase: use the **transaction pooler** (`:6543`, `?pgbouncer=true`) for `DATABASE_URL` and the **session pooler** (`:5432`, no pgbouncer) for `DIRECT_DATABASE_URL`. Both are in Supabase → Project Settings → Database → Connection string.
+
+**Important:** if your database password contains `@`, `#`, or `%`, URL-encode it in both connection strings (`@` → `%40`).
+
+```bash
+npm run prisma:migrate:deploy   # validates env, then applies migrations
+npm run prisma:seed             # optional sample data
+```
 
 The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyListItem` and other Prisma types.
 
