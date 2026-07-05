@@ -165,6 +165,41 @@ export async function fetchPokemonCardById(id: string): Promise<CardCatalogItemD
   return toCatalogDto(normalizePokemonCard(json.data));
 }
 
+const BATCH_ID_CHUNK_SIZE = 50;
+
+/**
+ * Fetch multiple cards in one API request using Lucene OR queries.
+ * Much faster than individual GET /cards/:id calls during decklist import.
+ */
+export async function fetchPokemonCardsByIds(
+  ids: string[]
+): Promise<Map<string, CardCatalogItemDto>> {
+  const result = new Map<string, CardCatalogItemDto>();
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length === 0) return result;
+
+  for (let i = 0; i < uniqueIds.length; i += BATCH_ID_CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(i, i + BATCH_ID_CHUNK_SIZE);
+    const q = chunk.map((id) => `id:${id}`).join(' OR ');
+    const url = new URL(`${BASE_URL}/cards`);
+    url.searchParams.set('q', q);
+    url.searchParams.set('pageSize', String(chunk.length));
+
+    const response = await fetch(url.toString(), { headers: getHeaders() });
+    if (!response.ok) {
+      throw new Error(`Pokemon TCG API error: ${response.status} ${response.statusText}`);
+    }
+
+    const json = (await response.json()) as { data: PokemonTcgApiCard[] };
+    for (const card of json.data) {
+      const dto = toCatalogDto(normalizePokemonCard(card));
+      result.set(dto.id, dto);
+    }
+  }
+
+  return result;
+}
+
 export async function searchPokemonCardBySetAndNumber(
   setCode: string,
   number: string,

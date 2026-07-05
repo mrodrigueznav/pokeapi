@@ -1,6 +1,6 @@
 import { catalogRepository } from '../repositories/catalog.repository';
 import {
-  fetchPokemonCardById,
+  fetchPokemonCardsByIds,
   searchPokemonCardBySetAndNumber,
   normalizePokemonCard,
 } from '../utils/pokemonTcgApi';
@@ -15,8 +15,12 @@ import { decklistRepository } from '../repositories/decklist.repository';
 import { CreateDecklistInput } from '../schemas';
 import { CardCatalogItemDto, LimitlessImportResult, LimitlessImportSlot } from '../types';
 import { logWarn } from '../utils/logger';
+import { mapWithConcurrency } from '../utils/async';
 
-async function saveCatalogDto(dto: CardCatalogItemDto) {
+const API_SAVE_CONCURRENCY = 8;
+const SEARCH_FALLBACK_CONCURRENCY = 4;
+
+async function saveCatalogDto(dto: CardCatalogItemDto): Promise<CardCatalogItemDto> {
   const saved = await catalogRepository.saveFromApi(
     normalizePokemonCard({
       id: dto.id,
@@ -36,70 +40,102 @@ async function saveCatalogDto(dto: CardCatalogItemDto) {
   return mapCatalogCard(saved);
 }
 
-async function resolveCatalogCard(
-  line: ParsedLimitlessLine
-): Promise<{ catalogCard: CardCatalogItemDto | null; catalogCardId: string; resolved: boolean }> {
-  const primaryId = line.catalogCardId;
+async function resolveCardsBatch(lines: ParsedLimitlessLine[]): Promise<{
+  cardsByLineId: Map<string, CardCatalogItemDto>;
+  resolvedLineIds: Set<string>;
+}> {
+  const cardsByLineId = new Map<string, CardCatalogItemDto>();
+  const resolvedLineIds = new Set<string>();
+  const catalogIds = lines.map((line) => line.catalogCardId);
 
-  try {
-    const local = await catalogRepository.findById(primaryId);
-    if (local) {
-      return { catalogCard: mapCatalogCard(local), catalogCardId: local.id, resolved: true };
-    }
-
-    const byId = await fetchPokemonCardById(primaryId);
-    if (byId) {
-      const saved = await saveCatalogDto(byId);
-      return { catalogCard: saved, catalogCardId: saved.id, resolved: true };
-    }
-
-    const bySearch = await searchPokemonCardBySetAndNumber(
-      line.setCode,
-      line.number,
-      line.name
-    );
-    if (bySearch) {
-      const saved = await saveCatalogDto(bySearch);
-      return { catalogCard: saved, catalogCardId: saved.id, resolved: true };
-    }
-  } catch (error) {
-    logWarn('Failed to resolve Limitless TCG card', {
-      line: line.raw,
-      error: error instanceof Error ? error.message : error,
-    });
+  const localCards = await catalogRepository.findByIds(catalogIds);
+  for (const card of localCards) {
+    const dto = mapCatalogCard(card);
+    cardsByLineId.set(card.id, dto);
+    resolvedLineIds.add(card.id);
   }
 
-  await catalogRepository.upsertFromApiOrMinimal({
-    id: primaryId,
-    name: line.name,
-    supertype: line.supertype,
-    setId: line.setCode.toLowerCase(),
-    setName: line.setCode,
-    number: line.number,
+  const missingIds = catalogIds.filter((id) => !cardsByLineId.has(id));
+  if (missingIds.length > 0) {
+    try {
+      const apiCards = await fetchPokemonCardsByIds(missingIds);
+      const saved = await mapWithConcurrency(
+        [...apiCards.values()],
+        API_SAVE_CONCURRENCY,
+        (dto) => saveCatalogDto(dto)
+      );
+      for (const dto of saved) {
+        cardsByLineId.set(dto.id, dto);
+        resolvedLineIds.add(dto.id);
+      }
+    } catch (error) {
+      logWarn('Batch Pokemon TCG API lookup failed, falling back to per-card search', {
+        count: missingIds.length,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+  }
+
+  const unresolvedLines = lines.filter((line) => !cardsByLineId.has(line.catalogCardId));
+
+  await mapWithConcurrency(unresolvedLines, SEARCH_FALLBACK_CONCURRENCY, async (line) => {
+    try {
+      const bySearch = await searchPokemonCardBySetAndNumber(
+        line.setCode,
+        line.number,
+        line.name
+      );
+      if (!bySearch) return;
+
+      const saved = await saveCatalogDto(bySearch);
+      cardsByLineId.set(line.catalogCardId, saved);
+      resolvedLineIds.add(line.catalogCardId);
+      if (saved.id !== line.catalogCardId) {
+        cardsByLineId.set(saved.id, saved);
+        resolvedLineIds.add(saved.id);
+      }
+    } catch (error) {
+      logWarn('Failed to resolve Limitless TCG card via search fallback', {
+        line: line.raw,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
   });
 
-  const fallback = await catalogRepository.findById(primaryId);
-  return {
-    catalogCard: fallback ? mapCatalogCard(fallback) : null,
-    catalogCardId: primaryId,
-    resolved: false,
-  };
+  return { cardsByLineId, resolvedLineIds };
 }
 
 export const limitlessDecklistService = {
   async import(decklist: string): Promise<LimitlessImportResult> {
     const parsed = parseLimitlessDecklist(decklist);
     const mergedLines = mergeLimitlessLinesByCatalog(parsed.lines);
+    const { cardsByLineId, resolvedLineIds } = await resolveCardsBatch(mergedLines);
 
     const slots: LimitlessImportSlot[] = [];
     let unresolved = 0;
 
     for (const line of mergedLines) {
-      const { catalogCard, catalogCardId, resolved } = await resolveCatalogCard(line);
-      if (!resolved) unresolved++;
+      let catalogCard = cardsByLineId.get(line.catalogCardId) ?? null;
+      let resolved = resolvedLineIds.has(line.catalogCardId);
 
-      const cardName = catalogCard?.name ?? line.name;
-      const supertype = catalogCard?.supertype ?? line.supertype;
+      if (!catalogCard) {
+        const minimal = await catalogRepository.createMinimal({
+          id: line.catalogCardId,
+          name: line.name,
+          supertype: line.supertype,
+          setId: line.setCode.toLowerCase(),
+          setName: line.setCode,
+          number: line.number,
+        });
+        catalogCard = mapCatalogCard(minimal);
+        resolved = false;
+        unresolved++;
+      } else if (!resolved) {
+        unresolved++;
+      }
+
+      const cardName = catalogCard.name;
+      const supertype = catalogCard.supertype;
 
       slots.push({
         raw: line.raw,
@@ -108,7 +144,7 @@ export const limitlessDecklistService = {
         supertype,
         setCode: line.setCode,
         number: line.number,
-        catalogCardId,
+        catalogCardId: catalogCard.id,
         playableCardKey: playableKey(cardName, supertype),
         catalogCard,
         resolved,

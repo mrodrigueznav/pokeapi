@@ -10,6 +10,13 @@ export const catalogRepository = {
     return prisma.cardCatalogItem.findUnique({ where: { id } });
   },
 
+  async findByIds(ids: string[]): Promise<CardCatalogItem[]> {
+    if (ids.length === 0) return [];
+    return prisma.cardCatalogItem.findMany({
+      where: { id: { in: [...new Set(ids)] } },
+    });
+  },
+
   async findByName(name: string): Promise<CardCatalogItem[]> {
     return prisma.cardCatalogItem.findMany({
       where: { name: { equals: name, mode: 'insensitive' } },
@@ -103,6 +110,37 @@ export const catalogRepository = {
         regulationMark: data.regulationMark ?? null,
         legalities: data.legalities ?? Prisma.JsonNull,
         rules: data.rules ?? [],
+      },
+    });
+  },
+
+  async createMinimal(data: {
+    id: string;
+    name: string;
+    supertype: string;
+    setId?: string;
+    setName?: string;
+    number?: string;
+  }): Promise<CardCatalogItem> {
+    const existing = await prisma.cardCatalogItem.findUnique({ where: { id: data.id } });
+    if (existing) return existing;
+
+    return prisma.cardCatalogItem.create({
+      data: {
+        id: data.id,
+        name: data.name,
+        supertype: supertypeFromDisplay(data.supertype),
+        subtypes: [],
+        types: [],
+        setId: data.setId ?? 'unknown',
+        setName: data.setName ?? 'Unknown Set',
+        number: data.number ?? '0',
+        rarity: 'Unknown',
+        imageUrl: '',
+        imageUrlLarge: null,
+        regulationMark: null,
+        legalities: Prisma.JsonNull,
+        rules: [],
       },
     });
   },
