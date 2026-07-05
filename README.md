@@ -141,6 +141,7 @@ The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyLis
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v1/decklists/compare` | Compare text decklist vs inventory |
+| POST | `/api/v1/decklists/import-limitless` | Import Limitless TCG export → decklist + slots |
 
 ### Locations
 

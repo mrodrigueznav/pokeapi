@@ -80,6 +80,10 @@ export const compareDecklistSchema = z.object({
   decklist: z.string().min(1),
 });
 
+export const importLimitlessDecklistSchema = z.object({
+  decklist: z.string().min(1),
+});
+
 export const createLocationSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['binder', 'deckbox', 'bulk', 'loan', 'sale', 'lost', 'other']),
@@ -141,6 +145,7 @@ export type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
 export type AddCardSlotInput = z.infer<typeof addCardSlotSchema>;
 export type CreateLocationInput = z.infer<typeof createLocationSchema>;
 export type CompareDecklistInput = z.infer<typeof compareDecklistSchema>;
+export type ImportLimitlessDecklistInput = z.infer<typeof importLimitlessDecklistSchema>;
 export type RemoveCardSlotInput = z.infer<typeof removeCardSlotSchema>;
 export type AssignCardInput = z.infer<typeof assignCardSchema>;
 export type RemoveCardInput = z.infer<typeof removeCardSchema>;

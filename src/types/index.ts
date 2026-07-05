@@ -131,6 +131,34 @@ export interface DecklistCompareResult {
   notFound: number;
 }
 
+export interface LimitlessImportSlot {
+  raw: string;
+  quantity: number;
+  name: string;
+  supertype: string;
+  setCode: string;
+  number: string;
+  catalogCardId: string;
+  playableCardKey: string;
+  catalogCard: CardCatalogItemDto | null;
+  resolved: boolean;
+}
+
+export interface LimitlessImportResult {
+  total: number;
+  sectionCounts: {
+    pokemon: number;
+    trainer: number;
+    energy: number;
+  };
+  parseErrors: string[];
+  unresolved: number;
+  /** Simple decklist text compatible with POST /decklists/compare */
+  decklist: string;
+  /** Slots ready for POST /decks/:id/add-card-slot */
+  slots: LimitlessImportSlot[];
+}
+
 export interface PokemonTcgApiCard {
   id: string;
   name: string;

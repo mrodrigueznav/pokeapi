@@ -164,3 +164,31 @@ export async function fetchPokemonCardById(id: string): Promise<CardCatalogItemD
   const json = (await response.json()) as { data: PokemonTcgApiCard };
   return toCatalogDto(normalizePokemonCard(json.data));
 }
+
+export async function searchPokemonCardBySetAndNumber(
+  setCode: string,
+  number: string,
+  name?: string
+): Promise<CardCatalogItemDto | null> {
+  const queries = [
+    `number:${number} set.id:${setCode.toLowerCase()}`,
+    name ? `number:${number} name:"${name}"` : null,
+    name ? `name:"${name}"` : null,
+  ].filter((q): q is string => q !== null);
+
+  for (const q of queries) {
+    const url = new URL(`${BASE_URL}/cards`);
+    url.searchParams.set('q', q);
+    url.searchParams.set('pageSize', '1');
+
+    const response = await fetch(url.toString(), { headers: getHeaders() });
+    if (!response.ok) continue;
+
+    const json = (await response.json()) as { data: PokemonTcgApiCard[] };
+    if (json.data.length > 0) {
+      return toCatalogDto(normalizePokemonCard(json.data[0]));
+    }
+  }
+
+  return null;
+}
