@@ -66,7 +66,42 @@ export function mapLocation(location: Location) {
   };
 }
 
+export function countPhysicalCopies(copies: PhysicalCardCopy[]) {
+  const counts = {
+    total: copies.length,
+    available: 0,
+    assigned: 0,
+    loaned: 0,
+    missing: 0,
+    sold: 0,
+  };
+
+  for (const copy of copies) {
+    switch (copy.status) {
+      case 'available':
+        counts.available++;
+        break;
+      case 'assigned':
+        counts.assigned++;
+        break;
+      case 'loaned':
+        counts.loaned++;
+        break;
+      case 'missing':
+        counts.missing++;
+        break;
+      case 'sold':
+        counts.sold++;
+        break;
+    }
+  }
+
+  return counts;
+}
+
 export function mapInventoryItem(item: InventoryItemWithRelations) {
+  const counts = countPhysicalCopies(item.physicalCopies);
+
   return {
     id: item.id,
     catalogCardId: item.catalogCardId,
@@ -81,6 +116,7 @@ export function mapInventoryItem(item: InventoryItemWithRelations) {
     tags: item.tags,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
+    counts,
     catalogCard: mapCatalogCard(item.catalogCard),
     physicalCopies: item.physicalCopies.map(mapPhysicalCopy),
     location: item.location ? mapLocation(item.location) : null,

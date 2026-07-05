@@ -116,7 +116,7 @@ The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyLis
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/inventory` | List inventory with catalog, copies, location |
+| GET | `/api/v1/inventory` | List inventory with `counts` per item and `byPlayableCard` summary (total / available / assigned) |
 | POST | `/api/v1/inventory` | Add inventory — merges into existing group when same catalog card + variant + finish + language + condition; creates N physical copies |
 | PATCH | `/api/v1/inventory/:id` | Update item (location change skips assigned copies) |
 | POST | `/api/v1/inventory/:id/loan` | Loan an available copy |

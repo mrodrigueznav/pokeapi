@@ -27,6 +27,32 @@ export interface PhysicalCardCopyDto {
   updatedAt: string;
 }
 
+export interface InventoryCopyCounts {
+  total: number;
+  available: number;
+  assigned: number;
+  loaned: number;
+  missing: number;
+  sold: number;
+}
+
+export interface PlayableCardInventorySummary {
+  playableCardKey: string;
+  cardName: string;
+  supertype: string;
+  total: number;
+  available: number;
+  assigned: number;
+  loaned: number;
+  missing: number;
+  sold: number;
+}
+
+export interface InventoryListResponse {
+  items: InventoryItemDto[];
+  byPlayableCard: PlayableCardInventorySummary[];
+}
+
 export interface InventoryItemDto {
   id: string;
   catalogCardId: string;
@@ -41,6 +67,7 @@ export interface InventoryItemDto {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  counts: InventoryCopyCounts;
   catalogCard?: CardCatalogItemDto;
   physicalCopies?: PhysicalCardCopyDto[];
   location?: LocationDto | null;
