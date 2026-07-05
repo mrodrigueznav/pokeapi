@@ -111,7 +111,7 @@ The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyLis
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/cards/search` | Search Pokémon TCG API (`q`, `supertype`, `subtype`, `setId`, `rarity`, `page`, `pageSize`) |
+| GET | `/api/v1/cards/search` | Search Pokémon TCG API (`q`, `supertype`, `subtype`, `setId`, `rarity`, `page`, `pageSize`) — **Standard-legal cards only** |
 | GET | `/api/v1/cards/:id` | Get card (local first, then API) |
 
 ### Inventory

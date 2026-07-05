@@ -94,8 +94,17 @@ export interface CardSearchParams {
   pageSize?: number;
 }
 
+/** Lucene clause applied to every catalog search — Standard-legal prints only. */
+export const STANDARD_LEGALITY_QUERY = 'legalities.standard:Legal';
+
+export function isStandardLegal(
+  legalities: Record<string, string> | null | undefined
+): boolean {
+  return legalities?.standard?.toLowerCase() === 'legal';
+}
+
 function buildSearchQuery(params: CardSearchParams): string {
-  const parts: string[] = [];
+  const parts: string[] = [STANDARD_LEGALITY_QUERY];
 
   if (params.q) {
     parts.push(`name:"${params.q}*"`);
@@ -113,7 +122,7 @@ function buildSearchQuery(params: CardSearchParams): string {
     parts.push(`rarity:"${params.rarity}"`);
   }
 
-  return parts.length > 0 ? parts.join(' ') : '';
+  return parts.join(' ');
 }
 
 export async function searchPokemonTcgApi(params: CardSearchParams): Promise<{
@@ -127,7 +136,7 @@ export async function searchPokemonTcgApi(params: CardSearchParams): Promise<{
 
   const query = buildSearchQuery(params);
   const url = new URL(`${BASE_URL}/cards`);
-  if (query) url.searchParams.set('q', query);
+  url.searchParams.set('q', query);
   url.searchParams.set('page', String(page));
   url.searchParams.set('pageSize', String(pageSize));
 
@@ -145,7 +154,9 @@ export async function searchPokemonTcgApi(params: CardSearchParams): Promise<{
   };
 
   return {
-    data: json.data.map((c) => toCatalogDto(normalizePokemonCard(c))),
+    data: json.data
+      .map((c) => toCatalogDto(normalizePokemonCard(c)))
+      .filter((c) => isStandardLegal(c.legalities)),
     page: json.page,
     pageSize: json.pageSize,
     totalCount: json.totalCount,
