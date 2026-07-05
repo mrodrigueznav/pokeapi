@@ -109,7 +109,7 @@ export const decklistRepository = {
 
     const key = playableKey(input.cardName, input.supertype);
 
-    await catalogRepository.upsertFromApiOrMinimal({
+    await catalogRepository.createMinimal({
       id: input.catalogCardId,
       name: input.cardName,
       supertype: input.supertype,
@@ -168,6 +168,47 @@ export const decklistRepository = {
       quantity: number;
     }>
   ) {
+    const merged = new Map<
+      string,
+      {
+        playableCardKey: string;
+        catalogCardId: string;
+        cardName: string;
+        supertype: string;
+        quantity: number;
+      }
+    >();
+
+    for (const slot of slots) {
+      const key = playableKey(slot.cardName, slot.supertype);
+      const existing = merged.get(key);
+      if (existing) {
+        existing.quantity += slot.quantity;
+      } else {
+        merged.set(key, {
+          playableCardKey: key,
+          catalogCardId: slot.catalogCardId,
+          cardName: slot.cardName,
+          supertype: slot.supertype,
+          quantity: slot.quantity,
+        });
+      }
+    }
+
+    const mergedSlots = [...merged.values()];
+
+    // Catalog + external API must run outside the transaction — otherwise the
+    // interactive tx expires (P2028) while waiting on Pokemon TCG API calls.
+    await Promise.all(
+      mergedSlots.map((slot) =>
+        catalogRepository.createMinimal({
+          id: slot.catalogCardId,
+          name: slot.cardName,
+          supertype: slot.supertype,
+        })
+      )
+    );
+
     return prisma.$transaction(async (tx) => {
       const decklist = await tx.decklist.create({
         data: {
@@ -178,33 +219,15 @@ export const decklistRepository = {
         },
       });
 
-      for (const slot of slots) {
-        const key = playableKey(slot.cardName, slot.supertype);
-        await catalogRepository.upsertFromApiOrMinimal({
-          id: slot.catalogCardId,
-          name: slot.cardName,
-          supertype: slot.supertype,
+      if (mergedSlots.length > 0) {
+        await tx.decklistCard.createMany({
+          data: mergedSlots.map((slot) => ({
+            decklistId: decklist.id,
+            playableCardKey: slot.playableCardKey,
+            catalogCardId: slot.catalogCardId,
+            quantity: slot.quantity,
+          })),
         });
-
-        const existing = await tx.decklistCard.findUnique({
-          where: { decklistId_playableCardKey: { decklistId: decklist.id, playableCardKey: key } },
-        });
-
-        if (existing) {
-          await tx.decklistCard.update({
-            where: { id: existing.id },
-            data: { quantity: existing.quantity + slot.quantity },
-          });
-        } else {
-          await tx.decklistCard.create({
-            data: {
-              decklistId: decklist.id,
-              playableCardKey: key,
-              catalogCardId: slot.catalogCardId,
-              quantity: slot.quantity,
-            },
-          });
-        }
       }
 
       const full = await tx.decklist.findUniqueOrThrow({
