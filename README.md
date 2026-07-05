@@ -67,11 +67,24 @@ CORS is enabled for all origins.
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start with hot reload (tsx) |
-| `npm run build` | Compile TypeScript |
+| `npm run build` | Generate Prisma client and compile TypeScript |
 | `npm start` | Run compiled server |
 | `npm run prisma:generate` | Generate Prisma client |
-| `npm run prisma:migrate` | Apply migrations |
+| `npm run prisma:migrate` | Apply migrations (dev) |
+| `npm run prisma:migrate:deploy` | Apply migrations (production) |
 | `npm run prisma:seed` | Seed database |
+
+## Deploy (Render)
+
+Recommended settings:
+
+| Setting | Value |
+|---------|-------|
+| **Build Command** | `npm install && npm run build` |
+| **Start Command** | `npm run prisma:migrate:deploy && npm start` |
+| **Environment** | `DATABASE_URL`, `PORT`, optional `POKEMON_TCG_API_KEY` |
+
+The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyListItem` and other Prisma types.
 
 ## API endpoints
 
