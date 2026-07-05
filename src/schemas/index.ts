@@ -148,3 +148,4 @@ export type BuyListQueryInput = z.infer<typeof buyListQuerySchema>;
 export type AddBuyListInput = z.infer<typeof addBuyListSchema>;
 export type UpdateBuyListInput = z.infer<typeof updateBuyListSchema>;
 export type UpdateBuyListStatusInput = z.infer<typeof updateBuyListStatusSchema>;
+export type MovementQueryInput = z.infer<typeof movementQuerySchema>;

@@ -8,28 +8,29 @@ import {
   UpdateBuyListStatusInput,
 } from '../schemas';
 import { getParam } from '../utils/params';
+import { getValidatedQuery, getValidatedBody } from '../utils/middleware';
 
 export const buylistController = {
   async list(req: Request, res: Response): Promise<void> {
-    const filters = req.query as unknown as BuyListQueryInput;
+    const filters = getValidatedQuery<BuyListQueryInput>(req);
     const items = await buylistService.list(filters);
     res.json(items.map(mapBuyListItem));
   },
 
   async add(req: Request, res: Response): Promise<void> {
-    const input = req.body as AddBuyListInput;
+    const input = getValidatedBody<AddBuyListInput>(req);
     const item = await buylistService.add(input);
     res.status(201).json(mapBuyListItem(item));
   },
 
   async update(req: Request, res: Response): Promise<void> {
-    const input = req.body as UpdateBuyListInput;
+    const input = getValidatedBody<UpdateBuyListInput>(req);
     const item = await buylistService.update(getParam(req, 'id'), input);
     res.json(mapBuyListItem(item));
   },
 
   async updateStatus(req: Request, res: Response): Promise<void> {
-    const input = req.body as UpdateBuyListStatusInput;
+    const input = getValidatedBody<UpdateBuyListStatusInput>(req);
     const item = await buylistService.updateStatus(getParam(req, 'id'), input);
     res.json(mapBuyListItem(item));
   },

@@ -11,6 +11,7 @@ import {
 } from '../schemas';
 import { notFound } from '../utils/errors';
 import { getParam } from '../utils/params';
+import { getValidatedBody } from '../utils/middleware';
 
 export const deckController = {
   async list(_req: Request, res: Response): Promise<void> {
@@ -26,13 +27,13 @@ export const deckController = {
   },
 
   async create(req: Request, res: Response): Promise<void> {
-    const input = req.body as CreateDeckInput;
+    const input = getValidatedBody<CreateDeckInput>(req);
     const deck = await deckService.create(input);
     res.status(201).json(mapDeck(deck));
   },
 
   async update(req: Request, res: Response): Promise<void> {
-    const input = req.body as UpdateDeckInput;
+    const input = getValidatedBody<UpdateDeckInput>(req);
     const deck = await deckService.update(getParam(req, 'id'), input);
     res.json(mapDeck(deck));
   },
@@ -43,25 +44,25 @@ export const deckController = {
   },
 
   async addCardSlot(req: Request, res: Response): Promise<void> {
-    const input = req.body as AddCardSlotInput;
+    const input = getValidatedBody<AddCardSlotInput>(req);
     const deck = await deckService.addCardSlot(getParam(req, 'id'), input);
     res.json(mapDeck(deck));
   },
 
   async removeCardSlot(req: Request, res: Response): Promise<void> {
-    const { deckCardId } = req.body as RemoveCardSlotInput;
+    const { deckCardId } = getValidatedBody<RemoveCardSlotInput>(req);
     const deck = await deckService.removeCardSlot(getParam(req, 'id'), deckCardId);
     res.json(mapDeck(deck));
   },
 
   async assignCard(req: Request, res: Response): Promise<void> {
-    const { deckCardId, physicalCopyId } = req.body as AssignCardInput;
+    const { deckCardId, physicalCopyId } = getValidatedBody<AssignCardInput>(req);
     const deck = await deckService.assignCard(getParam(req, 'id'), deckCardId, physicalCopyId);
     res.json(mapDeck(deck));
   },
 
   async removeCard(req: Request, res: Response): Promise<void> {
-    const { deckCardId, physicalCopyId } = req.body as RemoveCardInput;
+    const { deckCardId, physicalCopyId } = getValidatedBody<RemoveCardInput>(req);
     const deck = await deckService.removeCard(getParam(req, 'id'), deckCardId, physicalCopyId);
     res.json(mapDeck(deck));
   },

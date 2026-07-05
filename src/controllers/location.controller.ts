@@ -3,6 +3,7 @@ import { locationService } from '../services/location.service';
 import { mapLocation } from '../utils/mappers';
 import { CreateLocationInput } from '../schemas';
 import { getParam } from '../utils/params';
+import { getValidatedBody } from '../utils/middleware';
 
 export const locationController = {
   async list(_req: Request, res: Response): Promise<void> {
@@ -11,7 +12,7 @@ export const locationController = {
   },
 
   async create(req: Request, res: Response): Promise<void> {
-    const input = req.body as CreateLocationInput;
+    const input = getValidatedBody<CreateLocationInput>(req);
     const location = await locationService.create(input);
     res.status(201).json(mapLocation(location));
   },

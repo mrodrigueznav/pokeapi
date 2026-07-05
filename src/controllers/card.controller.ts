@@ -3,9 +3,11 @@ import { cardService } from '../services/card.service';
 import { CardSearchParams } from '../utils/pokemonTcgApi';
 import { getParam } from '../utils/params';
 
+import { getValidatedQuery } from '../utils/middleware';
+
 export const cardController = {
   async search(req: Request, res: Response): Promise<void> {
-    const params = req.query as unknown as CardSearchParams;
+    const params = getValidatedQuery<CardSearchParams>(req);
     const result = await cardService.search(params);
     res.json(result);
   },

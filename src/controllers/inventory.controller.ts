@@ -3,6 +3,7 @@ import { inventoryService } from '../services/inventory.service';
 import { mapInventoryItem } from '../utils/mappers';
 import { CreateInventoryInput, UpdateInventoryInput } from '../schemas';
 import { getParam } from '../utils/params';
+import { getValidatedBody } from '../utils/middleware';
 
 export const inventoryController = {
   async list(_req: Request, res: Response): Promise<void> {
@@ -11,23 +12,23 @@ export const inventoryController = {
   },
 
   async create(req: Request, res: Response): Promise<void> {
-    const input = req.body as CreateInventoryInput;
+    const input = getValidatedBody<CreateInventoryInput>(req);
     const { item, created } = await inventoryService.create(input);
     res.status(created ? 201 : 200).json(mapInventoryItem(item));
   },
 
   async update(req: Request, res: Response): Promise<void> {
-    const input = req.body as UpdateInventoryInput;
+    const input = getValidatedBody<UpdateInventoryInput>(req);
     const item = await inventoryService.update(getParam(req, 'id'), input);
     res.json(mapInventoryItem(item));
   },
 
   async loan(req: Request, res: Response): Promise<void> {
-    const { copyId, locationId, note } = req.body as {
+    const { copyId, locationId, note } = getValidatedBody<{
       copyId: string;
       locationId: string;
       note?: string;
-    };
+    }>(req);
     const item = await inventoryService.loan(
       getParam(req, 'inventoryItemId'),
       copyId,
@@ -38,7 +39,7 @@ export const inventoryController = {
   },
 
   async returnCopy(req: Request, res: Response): Promise<void> {
-    const { copyId, locationId } = req.body as { copyId: string; locationId: string };
+    const { copyId, locationId } = getValidatedBody<{ copyId: string; locationId: string }>(req);
     const item = await inventoryService.returnCopy(
       getParam(req, 'inventoryItemId'),
       copyId,

@@ -6,7 +6,7 @@ import { getHttpStatus, mapUnknownError } from './errorMapper';
 export function validateBody<T>(schema: ZodSchema<T>) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
-      req.body = schema.parse(req.body);
+      req.validatedBody = schema.parse(req.body);
       next();
     } catch (error) {
       next(error);
@@ -17,12 +17,20 @@ export function validateBody<T>(schema: ZodSchema<T>) {
 export function validateQuery<T>(schema: ZodSchema<T>) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
-      req.query = schema.parse(req.query) as typeof req.query;
+      req.validatedQuery = schema.parse(req.query);
       next();
     } catch (error) {
       next(error);
     }
   };
+}
+
+export function getValidatedBody<T>(req: Request): T {
+  return req.validatedBody as T;
+}
+
+export function getValidatedQuery<T>(req: Request): T {
+  return req.validatedQuery as T;
 }
 
 export function errorHandler(
