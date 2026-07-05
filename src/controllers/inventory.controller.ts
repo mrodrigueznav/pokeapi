@@ -12,8 +12,8 @@ export const inventoryController = {
 
   async create(req: Request, res: Response): Promise<void> {
     const input = req.body as CreateInventoryInput;
-    const item = await inventoryService.create(input);
-    res.status(201).json(mapInventoryItem(item));
+    const { item, created } = await inventoryService.create(input);
+    res.status(created ? 201 : 200).json(mapInventoryItem(item));
   },
 
   async update(req: Request, res: Response): Promise<void> {

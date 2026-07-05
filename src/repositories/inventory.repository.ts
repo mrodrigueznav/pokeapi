@@ -2,14 +2,52 @@ import prisma from '../utils/prisma';
 import { CreateInventoryInput, UpdateInventoryInput } from '../schemas';
 import { playableKey } from '../utils/playableKey';
 import { catalogRepository } from './catalog.repository';
-import { movementRepository } from './catalog.repository';
 import { AppError, notFound } from '../utils/errors';
+import { Prisma } from '@prisma/client';
 
 const inventoryInclude = {
   catalogCard: true,
   physicalCopies: true,
   location: true,
 } as const;
+
+/** Identity key for grouping identical physical copies into one InventoryItem. */
+function inventoryGroupWhere(input: {
+  catalogCardId: string;
+  variant: string;
+  finish: string;
+  language: string;
+  condition: string;
+}) {
+  return {
+    catalogCardId: input.catalogCardId,
+    variant: input.variant,
+    finish: input.finish,
+    language: input.language,
+    condition: input.condition,
+  };
+}
+
+async function createPhysicalCopies(
+  tx: Prisma.TransactionClient,
+  inventoryItemId: string,
+  quantity: number,
+  locationId: string | null
+) {
+  for (let i = 0; i < quantity; i++) {
+    await tx.physicalCardCopy.create({
+      data: {
+        inventoryItemId,
+        status: 'available',
+        locationId,
+      },
+    });
+  }
+}
+
+type InventoryItemWithRelations = Prisma.InventoryItemGetPayload<{
+  include: typeof inventoryInclude;
+}>;
 
 export const inventoryRepository = {
   findAll() {
@@ -33,7 +71,10 @@ export const inventoryRepository = {
     });
   },
 
-  async create(input: CreateInventoryInput) {
+  async create(input: CreateInventoryInput): Promise<{
+    item: InventoryItemWithRelations;
+    created: boolean;
+  }> {
     const key = playableKey(input.cardName, input.supertype);
 
     const catalogCard = await catalogRepository.upsertFromApiOrMinimal({
@@ -42,7 +83,53 @@ export const inventoryRepository = {
       supertype: input.supertype,
     });
 
+    const group = inventoryGroupWhere({
+      catalogCardId: catalogCard.id,
+      variant: input.variant,
+      finish: input.finish,
+      language: input.language,
+      condition: input.condition,
+    });
+
+    const copyLocationId = input.locationId ?? null;
+
     return prisma.$transaction(async (tx) => {
+      const existing = await tx.inventoryItem.findFirst({
+        where: group,
+        include: inventoryInclude,
+      });
+
+      if (existing) {
+        const mergedTags = [...new Set([...existing.tags, ...input.tags])];
+
+        await tx.inventoryItem.update({
+          where: { id: existing.id },
+          data: {
+            quantity: existing.quantity + input.quantity,
+            tags: mergedTags,
+            ...(input.notes && !existing.notes ? { notes: input.notes } : {}),
+          },
+        });
+
+        await createPhysicalCopies(tx, existing.id, input.quantity, copyLocationId);
+
+        await tx.movement.create({
+          data: {
+            type: 'added',
+            inventoryItemId: existing.id,
+            to: copyLocationId,
+            note: `Added ${input.quantity} copy/copies to existing inventory group`,
+          },
+        });
+
+        const item = await tx.inventoryItem.findUniqueOrThrow({
+          where: { id: existing.id },
+          include: inventoryInclude,
+        });
+
+        return { item, created: false };
+      }
+
       const item = await tx.inventoryItem.create({
         data: {
           catalogCardId: catalogCard.id,
@@ -52,37 +139,29 @@ export const inventoryRepository = {
           language: input.language,
           condition: input.condition,
           quantity: input.quantity,
-          locationId: input.locationId ?? null,
+          locationId: copyLocationId,
           notes: input.notes ?? null,
           tags: input.tags,
         },
       });
 
-      const copies = [];
-      for (let i = 0; i < input.quantity; i++) {
-        const copy = await tx.physicalCardCopy.create({
-          data: {
-            inventoryItemId: item.id,
-            status: 'available',
-            locationId: input.locationId ?? null,
-          },
-        });
-        copies.push(copy);
-      }
+      await createPhysicalCopies(tx, item.id, input.quantity, copyLocationId);
 
       await tx.movement.create({
         data: {
           type: 'added',
           inventoryItemId: item.id,
-          to: input.locationId ?? null,
+          to: copyLocationId,
           note: `Added ${input.quantity} copy/copies`,
         },
       });
 
-      return tx.inventoryItem.findUniqueOrThrow({
+      const fullItem = await tx.inventoryItem.findUniqueOrThrow({
         where: { id: item.id },
         include: inventoryInclude,
       });
+
+      return { item: fullItem, created: true };
     });
   },
 
