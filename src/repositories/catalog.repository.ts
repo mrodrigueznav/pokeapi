@@ -3,6 +3,7 @@ import { CardCatalogItem, Prisma } from '@prisma/client';
 import { normalizePokemonCard } from '../utils/pokemonTcgApi';
 import { supertypeFromDisplay } from '../utils/playableKey';
 import { fetchPokemonCardById } from '../utils/pokemonTcgApi';
+import { logWarn } from '../utils/logger';
 
 export const catalogRepository = {
   async findById(id: string): Promise<CardCatalogItem | null> {
@@ -52,7 +53,16 @@ export const catalogRepository = {
     const existing = await prisma.cardCatalogItem.findUnique({ where: { id: data.id } });
     if (existing) return existing;
 
-    const apiCard = await fetchPokemonCardById(data.id);
+    let apiCard: Awaited<ReturnType<typeof fetchPokemonCardById>> = null;
+    try {
+      apiCard = await fetchPokemonCardById(data.id);
+    } catch (error) {
+      logWarn('Pokemon TCG API lookup failed, falling back to minimal catalog entry', {
+        catalogCardId: data.id,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+
     if (apiCard) {
       const normalized = normalizePokemonCard({
         id: apiCard.id,

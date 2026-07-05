@@ -56,7 +56,8 @@ API runs at `http://localhost:4000` by default. Versioned endpoints are mounted 
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | — |
+| `DATABASE_URL` | PostgreSQL connection string (pooler URL ok for runtime) | — |
+| `DIRECT_DATABASE_URL` | Direct Postgres URL for migrations (`prisma migrate deploy`) | same as `DATABASE_URL` locally |
 | `PORT` | Server port | `4000` |
 | `POKEMON_TCG_API_KEY` | Optional API key for [Pokémon TCG API](https://pokemontcg.io/) | empty |
 
@@ -82,7 +83,9 @@ Recommended settings:
 |---------|-------|
 | **Build Command** | `npm install && npm run build` |
 | **Start Command** | `npm run prisma:migrate:deploy && npm start` |
-| **Environment** | `DATABASE_URL`, `PORT`, optional `POKEMON_TCG_API_KEY` |
+| **Environment** | `DATABASE_URL`, `DIRECT_DATABASE_URL`, `PORT`, optional `POKEMON_TCG_API_KEY` |
+
+On Supabase: use the **pooler** URL (`:6543`) for `DATABASE_URL` and the **direct** URL (`:5432`) for `DIRECT_DATABASE_URL`. Migrations require the direct connection.
 
 The build runs `prisma generate` before `tsc`, so TypeScript can resolve `BuyListItem` and other Prisma types.
 
@@ -167,12 +170,13 @@ When a deck is deleted, linked buy list items keep their record but `sourceDeckI
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Human readable message",
+    "hint": "Optional suggestion to fix the issue",
     "details": {}
   }
 }
 ```
 
-Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `COPY_NOT_AVAILABLE`, `DECK_SLOT_FULL`, `DECK_NOT_ACTIVE`, `COPY_DOES_NOT_MATCH_SLOT`, `LOCATION_IN_USE`, `INTERNAL_ERROR`.
+Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `COPY_NOT_AVAILABLE`, `DECK_SLOT_FULL`, `DECK_NOT_ACTIVE`, `COPY_DOES_NOT_MATCH_SLOT`, `LOCATION_IN_USE`, `DATABASE_ERROR`, `DATABASE_NOT_READY`, `EXTERNAL_API_ERROR`, `INTERNAL_ERROR`.
 
 ## Project structure
 

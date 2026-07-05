@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodError, ZodSchema } from 'zod';
-import { AppError } from '../utils/errors';
-import { logError } from '../utils/logger';
+import { ZodSchema } from 'zod';
+import { logError } from './logger';
+import { getHttpStatus, mapUnknownError } from './errorMapper';
 
 export function validateBody<T>(schema: ZodSchema<T>) {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -27,40 +27,18 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
 
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): void {
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
-      error: {
-        code: err.code,
-        message: err.message,
-        details: err.details ?? {},
-      },
-    });
-    return;
+  const status = getHttpStatus(err);
+  const body = mapUnknownError(err);
+
+  if (status >= 500) {
+    logError(`${req.method} ${req.path} → ${body.code}: ${body.message}`, err);
   }
 
-  if (err instanceof ZodError) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Validation failed',
-        details: err.flatten(),
-      },
-    });
-    return;
-  }
-
-  logError('Unhandled error', err);
-  res.status(500).json({
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'An unexpected error occurred',
-      details: {},
-    },
-  });
+  res.status(status).json({ error: body });
 }
 
 export function asyncHandler(
